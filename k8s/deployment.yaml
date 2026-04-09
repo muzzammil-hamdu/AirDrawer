@@ -1,0 +1,44 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: airdrawer
+  namespace: airdrawer
+  labels:
+    app: airdrawer
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: airdrawer
+  template:
+    metadata:
+      labels:
+        app: airdrawer
+    spec:
+      containers:
+        - name: airdrawer
+          image: mujjuacr1122.azurecr.io/airdrawer:latest
+          imagePullPolicy: Always
+          ports:
+            - containerPort: 80
+          resources:
+            requests:
+              cpu: "100m"
+              memory: "128Mi"
+            limits:
+              cpu: "500m"
+              memory: "256Mi"
+          livenessProbe:
+            httpGet:
+              path: /
+              port: 80
+            initialDelaySeconds: 10
+            periodSeconds: 15
+          readinessProbe:
+            httpGet:
+              path: /
+              port: 80
+            initialDelaySeconds: 5
+            periodSeconds: 10
+      imagePullSecrets:
+        - name: acr-secret

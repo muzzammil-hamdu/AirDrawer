@@ -1,0 +1,8 @@
+node_modules
+dist
+.git
+.gitignore
+*.md
+.env*
+k8s
+deploy.sh
