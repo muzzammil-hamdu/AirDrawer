@@ -15,7 +15,8 @@ variables:
   aksResourceGroup: 'aks-luminary-rg'
   k8sNamespace: 'airdrawer'
 
-  # ── Image tag = Build ID for traceability ─────────────────
+  # ── Shared ────────────────────────────────────────────────
+  serviceConnection: 'azure-service-connection'
   tag: '$(Build.BuildId)'
 
 stages:
@@ -29,41 +30,33 @@ stages:
     - job: BuildAndPush
       displayName: 'Docker Build & Push'
       pool:
-        vmImage: 'ubuntu-latest'
+        name: 'projectpool'
       steps:
 
         # 1. Checkout source
         - checkout: self
 
-        # 2. Log in to ACR
-        - task: Docker@2
-          displayName: 'Login to ACR'
+        # 2. Build & Push using Azure CLI (uses azure-service-connection for ACR auth)
+        - task: AzureCLI@2
+          displayName: 'Build & Push Image to ACR'
           inputs:
-            command: login
-            containerRegistry: 'mujjuacr1122-connection'   # ← ADO Service Connection name
+            azureSubscription: '$(serviceConnection)'
+            scriptType: 'bash'
+            scriptLocation: 'inlineScript'
+            inlineScript: |
+              az acr login --name $(acrName)
 
-        # 3. Build image
-        - task: Docker@2
-          displayName: 'Build Docker Image'
-          inputs:
-            command: build
-            repository: '$(acrLoginServer)/$(imageRepository)'
-            dockerfile: '$(dockerfilePath)'
-            tags: |
-              $(tag)
-              latest
+              docker build \
+                -t $(acrLoginServer)/$(imageRepository):$(tag) \
+                -t $(acrLoginServer)/$(imageRepository):latest \
+                -f $(dockerfilePath) .
 
-        # 4. Push image
-        - task: Docker@2
-          displayName: 'Push Image to ACR'
-          inputs:
-            command: push
-            repository: '$(acrLoginServer)/$(imageRepository)'
-            tags: |
-              $(tag)
-              latest
+              docker push $(acrLoginServer)/$(imageRepository):$(tag)
+              docker push $(acrLoginServer)/$(imageRepository):latest
 
-        # 5. Publish k8s manifests as pipeline artifact
+              echo "✅ Image pushed: $(acrLoginServer)/$(imageRepository):$(tag)"
+
+        # 3. Publish k8s manifests as pipeline artifact
         - task: PublishPipelineArtifact@1
           displayName: 'Publish K8s Manifests'
           inputs:
@@ -82,8 +75,8 @@ stages:
     - deployment: DeployToAKS
       displayName: 'Deploy AirDrawer to luminary-aks-cluster'
       pool:
-        vmImage: 'ubuntu-latest'
-      environment: 'luminary-aks-cluster.airdrawer'   # ← ADO Environment (cluster.namespace)
+        name: 'projectpool'
+      environment: 'luminary-aks-cluster.airdrawer'
       strategy:
         runOnce:
           deploy:
@@ -102,7 +95,7 @@ stages:
                 inputs:
                   action: deploy
                   connectionType: azureResourceManager
-                  azureSubscriptionConnection: 'azure-service-connection'   # ← ADO Azure Service Connection name
+                  azureSubscriptionConnection: '$(serviceConnection)'
                   azureResourceGroup: '$(aksResourceGroup)'
                   kubernetesCluster: '$(aksCluster)'
                   namespace: 'default'
@@ -114,21 +107,21 @@ stages:
                 inputs:
                   action: createSecret
                   connectionType: azureResourceManager
-                  azureSubscriptionConnection: 'azure-service-connection'   # ← ADO Azure Service Connection name
+                  azureSubscriptionConnection: '$(serviceConnection)'
                   azureResourceGroup: '$(aksResourceGroup)'
                   kubernetesCluster: '$(aksCluster)'
                   namespace: '$(k8sNamespace)'
                   secretType: dockerRegistry
                   secretName: 'acr-secret'
-                  dockerRegistryEndpoint: 'mujjuacr1122-connection'        # ← ADO Service Connection name
+                  dockerRegistryEndpoint: '$(serviceConnection)'
 
-              # 4. Deploy manifests (replaces image tag dynamically)
+              # 4. Deploy all manifests (image tag injected dynamically)
               - task: KubernetesManifest@1
                 displayName: 'Deploy to AKS'
                 inputs:
                   action: deploy
                   connectionType: azureResourceManager
-                  azureSubscriptionConnection: 'azure-service-connection'   # ← ADO Azure Service Connection name
+                  azureSubscriptionConnection: '$(serviceConnection)'
                   azureResourceGroup: '$(aksResourceGroup)'
                   kubernetesCluster: '$(aksCluster)'
                   namespace: '$(k8sNamespace)'
