@@ -76,7 +76,6 @@ stages:
       displayName: 'Deploy AirDrawer to luminary-aks-cluster'
       pool:
         name: 'projectpool'
-      environment: 'luminary-aks-cluster'
       strategy:
         runOnce:
           deploy:
@@ -147,6 +146,4 @@ stages:
                   manifests: |
                     $(Pipeline.Workspace)/manifests/deployment.yaml
                     $(Pipeline.Workspace)/manifests/service.yaml
-                    $(Pipeline.Workspace)/manifests/ingress.yaml
                   containers: '$(acrLoginServer)/$(imageRepository):$(tag)'
-                  imagePullSecrets: 'acr-secret'
