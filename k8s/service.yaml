@@ -6,7 +6,7 @@ metadata:
   labels:
     app: airdrawer
 spec:
-  type: LoadBalancer
+  type: ClusterIP
   selector:
     app: airdrawer
   ports:
