@@ -72,14 +72,11 @@ stages:
   dependsOn: Build
   condition: succeeded()
   jobs:
-    - deployment: DeployToAKS
+    - job: DeployToAKS
       displayName: 'Deploy AirDrawer to luminary-aks-cluster'
       pool:
         name: 'projectpool'
-      strategy:
-        runOnce:
-          deploy:
-            steps:
+      steps:
 
               # 1. Download manifests artifact
               - task: DownloadPipelineArtifact@2
