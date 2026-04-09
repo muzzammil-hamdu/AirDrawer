@@ -76,7 +76,7 @@ stages:
       displayName: 'Deploy AirDrawer to luminary-aks-cluster'
       pool:
         name: 'projectpool'
-      environment: 'luminary-aks-cluster.airdrawer'
+      environment: 'luminary-aks-cluster'
       strategy:
         runOnce:
           deploy:
