@@ -5,8 +5,12 @@ metadata:
   namespace: airdrawer
 spec:
   ingressClassName: nginx
+  tls:
+    - hosts:
+        - "airdrawer.52.155.117.77.nip.io"
   rules:
-    - http:
+    - host: "airdrawer.52.155.117.77.nip.io"
+      http:
         paths:
           - path: /
             pathType: Prefix
